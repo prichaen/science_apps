@@ -16,7 +16,8 @@ science_apps/
 ├─ index.html                  앱 목록 첫 화면
 ├─ electromagnetic-induction/  앱 하나 = 폴더 하나
 │  ├─ index.html
-│  └─ assets/
+│  ├─ assets/
+│  └─ supabase-setup.sql       랭킹용 Supabase 표 설정
 └─ stellar-nucleosynthesis/
    ├─ index.html
    └─ supabase-setup.sql       랭킹용 Supabase 표 설정 (SQL Editor에서 한 번 실행)
