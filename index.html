@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>과학 앱 모음</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0f24;--bg2:#121a3a;--card:#18224a;--line:#2a3670;--text:#eef2ff;--mut:#9aa6d6;--yel:#ffd60a;--cyan:#3ee6ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;color:var(--text);font-family:'Noto Sans KR',sans-serif;
+  background:radial-gradient(circle at 15% 0%,rgba(62,230,255,.12),transparent 45%),radial-gradient(circle at 90% 30%,rgba(255,214,10,.08),transparent 40%),var(--bg)}
+main{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 28px) 16px calc(env(safe-area-inset-bottom) + 28px)}
+h1{font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:34px;margin:0;color:var(--yel);text-shadow:0 0 18px rgba(255,214,10,.45)}
+.sub{color:var(--mut);margin:6px 0 22px;font-size:14px}
+.group{margin-top:22px}
+.group h2{font-size:13px;color:var(--cyan);letter-spacing:1px;margin:0 0 8px;font-weight:700}
+a.app{display:block;text-decoration:none;color:inherit;background:linear-gradient(135deg,var(--card),var(--bg2));border:2px solid var(--line);border-radius:18px;padding:18px 20px;margin-bottom:12px;position:relative}
+a.app::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--accent,var(--yel));box-shadow:0 0 12px var(--accent,var(--yel))}
+a.app:active{transform:scale(.98)}
+a.app b{display:block;font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:22px;color:var(--accent,var(--yel))}
+a.app span{color:var(--mut);font-size:13px;line-height:1.5}
+footer{margin-top:30px;color:var(--mut);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>과학 앱 모음</h1>
+  <p class="sub">수업 시간에 쓰는 과학 시뮬레이션과 게임</p>
+  <div id="list"></div>
+  <footer>과목별로 앱이 계속 추가될 예정이에요.</footer>
+</main>
+<script>
+// 새 앱을 추가할 때는 이 목록에 한 줄만 넣으면 됩니다.
+const APPS = [
+  { subject: '물리', title: '찌릿찌릿 전자기 연구소', desc: '솔레노이드 · 전동기 · 발전기 시뮬레이션과 방향 맞히기 게임', path: 'electromagnetic-induction/', accent: '#ffd60a' },
+];
+const ORDER = ['물리', '화학', '생명과학', '지구과학'];
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.getElementById('list').innerHTML = ORDER
+  .filter(sub => APPS.some(a => a.subject === sub))
+  .map(sub => `<section class="group"><h2>${sub}</h2>` +
+    APPS.filter(a => a.subject === sub).map(a =>
+      `<a class="app" href="${a.path}" style="--accent:${a.accent}"><b>${esc(a.title)}</b><span>${esc(a.desc)}</span></a>`).join('') +
+    `</section>`).join('');
+</script>
+</body>
+</html>
