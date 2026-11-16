@@ -318,6 +318,8 @@ const PHASES=[
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
              set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+// 앱 구분값: 같은 Supabase 표와 같은 주소(github.io)를 쓰는 다른 앱과 랭킹·기록이 섞이지 않게 합니다.
+const APP_ID='stellar-nucleosynthesis';
 
 // ---------- canvas ----------
 const W=700, C=W/2, R=332, DANGER=R*0.82;
@@ -332,7 +334,7 @@ new ResizeObserver(resize).observe(cv);
 
 // ---------- 사운드 (Web Audio로 직접 합성, 음원 파일 없음) ----------
 const sfx=(()=>{
-  let ac=null, master=null, on=store.get('stellar-sound',true)!==false, lastBounce=0;
+  let ac=null, master=null, on=store.get(APP_ID+':sound',true)!==false, lastBounce=0;
   function ensure(){
     if(!on) return null;
     if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)();
@@ -364,7 +366,7 @@ const sfx=(()=>{
   return {
     unlock(){ ensure(); },
     get on(){ return on; },
-    toggle(){ on=!on; store.set('stellar-sound',on); if(on) ensure(); else if(ac) ac.suspend().catch(()=>{}); return on; },
+    toggle(){ on=!on; store.set(APP_ID+':sound',on); if(on) ensure(); else if(ac) ac.suspend().catch(()=>{}); return on; },
     drop(lv){ tone(640-lv*22,{d:.09,f2:320,g:.1,type:'triangle'}); },
     bounce(lv,amp){ const now=performance.now(); if(now-lastBounce<70) return; lastBounce=now;
       tone(280-lv*12,{d:.08,f2:130-lv*4,g:Math.min(.1,amp*.7)}); },
@@ -395,7 +397,7 @@ function wobble(b,amp,ang){ if(wobNow(b)<amp*.6){ b.wob=amp; b.wobT=0; b.wobA=an
 // ---------- state ----------
 let balls, fx, score, maxLv, cur, nxt, aim, cool, dangerT, over, flash, shake, novae, seen;
 let playing=false, saved=false, sparks=[];
-let best=+store.get('stellar-best',0)||0;
+let best=+store.get(APP_ID+':best',0)||0;
 const pick=()=>{const r=Math.random(); return r<.42?0:r<.72?1:r<.9?2:3;};
 function reset(){
   balls=[]; fx=[]; sparks=[]; score=0; maxLv=0; cur=pick(); nxt=pick(); aim=-Math.PI/2; cool=0;
@@ -591,7 +593,7 @@ const lad=$('ladder');
 lad.innerHTML=EL.map((e,i)=>`<div class="chip" data-i="${i}" title="${e.n}"><sup>${e.a}</sup>${e.s}</div>`).join('');
 function ui(){
   $('score').textContent=score.toLocaleString();
-  if(score>best){best=score; store.set('stellar-best',best);}
+  if(score>best){best=score; store.set(APP_ID+':best',best);}
   $('best').textContent=best.toLocaleString();
   $('titleBest').textContent=best?`내 최고 에너지 ${best.toLocaleString()}`:'';
   const ph=[...PHASES].reverse().find(p=>maxLv>=p.min);
@@ -618,7 +620,7 @@ function gameOver(){
   over=true; playing=false; sfx.over();
   $('overScore').textContent=score.toLocaleString();
   $('overMsg').textContent=maxLv>=FE?'철 핵까지 도달했습니다. 별은 장렬하게 무너졌습니다.':`가장 무거운 원소: ${EL[maxLv].n}(${EL[maxLv].s}). 물질이 경계 밖까지 차올랐습니다.`;
-  $('pname').value=store.get('stellar-name','');
+  $('pname').value=store.get(APP_ID+':name','');
   $('pname').disabled=false; $('btnSave').disabled=false;
   $('saveNote').className='note'; $('saveNote').textContent='이름을 적으면 랭킹에 기록됩니다.';
   $('over').hidden=false; ($('pname').value?$('btnSave'):$('pname')).focus();
@@ -635,19 +637,19 @@ function sbHeaders(extra){const h={apikey:SUPABASE_KEY,'Content-Type':'applicati
   if(SUPABASE_KEY.startsWith('eyJ')) h.Authorization='Bearer '+SUPABASE_KEY; return h;}
 const withTimeout=(p,ms=8000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
 const sortTop=a=>a.sort((x,y)=>y.score-x.score||x.at-y.at).slice(0,10);
-const localTop=()=>sortTop(store.get('stellar-rank',[]));
+const localTop=()=>sortTop(store.get(APP_ID+':rank',[]));
 async function fetchGlobal(){
-  const res=await withTimeout(fetch(API+'?select=id,name,score,lv,created_at&order=score.desc,created_at.asc&limit=10',{headers:sbHeaders()}));
+  const res=await withTimeout(fetch(API+'?select=id,name,score,lv,created_at&app=eq.'+encodeURIComponent(APP_ID)+'&order=score.desc,created_at.asc&limit=10',{headers:sbHeaders()}));
   if(!res.ok) throw new Error('HTTP '+res.status);
   return (await res.json()).map(r=>({id:'g'+r.id,name:String(r.name||'').slice(0,10)||'이름 없음',
     score:r.score|0,lv:Math.min(FE,Math.max(0,r.lv|0)),at:Date.parse(r.created_at)||0}));
 }
 async function saveEntry(entry){
-  const local=localTop(); local.push(entry); store.set('stellar-rank',sortTop(local));
+  const local=localTop(); local.push(entry); store.set(APP_ID+':rank',sortTop(local));
   if(!online) return {where:'local'};
   try{
     const res=await withTimeout(fetch(API,{method:'POST',headers:sbHeaders({Prefer:'return=representation'}),
-      body:JSON.stringify({name:entry.name,score:entry.score,lv:entry.lv})}));
+      body:JSON.stringify({app:APP_ID,name:entry.name,score:entry.score,lv:entry.lv})}));
     if(!res.ok) throw new Error('HTTP '+res.status);
     const rows=await res.json(); return {where:'global',id:rows[0]?'g'+rows[0].id:null};
   }catch(e){ return {where:'local',error:true}; }
@@ -677,7 +679,7 @@ async function openRank(fromGame){
 $('entry').addEventListener('submit',async ev=>{
   ev.preventDefault(); if(saved) return;
   const name=$('pname').value.trim().slice(0,10); if(!name){$('pname').focus();return;}
-  store.set('stellar-name',name);
+  store.set(APP_ID+':name',name);
   $('btnSave').disabled=true; $('pname').disabled=true; $('saveNote').textContent='기록하는 중…';
   const entry={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),name,score,lv:maxLv,at:Date.now()};
   const r=await saveEntry(entry); saved=true; highlight=r.id||entry.id;
