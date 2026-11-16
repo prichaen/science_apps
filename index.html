@@ -11,6 +11,7 @@
   --blue:#a8d8f0; --blue-d:#4a90b8; --blue-l:#e3f3fb;
   --pink:#f7c5d5; --pink-d:#c45c84; --pink-l:#fdebf1;
   --yel:#fbe7a1;  --yel-d:#a8841e;  --yel-l:#fef8e1;
+  --grn:#c0ed70;  --grn-d:#4d6b16;  --grn-l:#f0f8df;
   --ink:#3d4660; --mut:#7f88a3; --bg:#fbfaff;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -58,12 +59,12 @@ footer{margin-top:32px;color:var(--mut);font-size:12px;text-align:center}
 // tone: 'blue' | 'pink' | 'yel' 중 하나 (비워 두면 과목 색을 따라가요)
 const APPS = [
   { subject: '물리', title: '찌릿찌릿 전자기 연구소', desc: '솔레노이드 · 전동기 · 발전기 시뮬레이션과 방향 맞히기 게임', path: 'electromagnetic-induction/' },
-  { subject: '지구과학', title: '별의 핵', desc: '수소에서 철까지, 원형 중력 속에서 원소를 융합하는 핵합성 게임 · 전체 랭킹', path: 'stellar-nucleosynthesis/' },
+  { subject: '지구과학', title: '별의 핵', desc: '수소에서 철까지, 원형 중력 속에서 원소를 융합하는 핵합성 게임', path: 'stellar-nucleosynthesis/' },
 ];
 const SUBJECTS = [
   { name: '물리', tone: 'blue' },
   { name: '화학', tone: 'pink' },
-  { name: '생명과학', tone: 'pink' },
+  { name: '생명과학', tone: 'grn' },
   { name: '지구과학', tone: 'yel' },
 ];
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
