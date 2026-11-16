@@ -6,8 +6,8 @@
 
 | 과목 | 앱 | 폴더 |
 |---|---|---|
-| 물리 | 찌릿찌릿 전자기 연구소: 솔레노이드 · 전동기 · 발전기 시뮬레이션, 스피드게임 · 서바이벌 모드 | `electromagnetic-induction/` |
-| 지구과학 | 별의 핵: 수소에서 철까지 원소를 융합하는 원형 중력 수박게임, Supabase 익명 TOP 10 랭킹 | `stellar-nucleosynthesis/` |
+| 물리 | 찌릿찌릿 전자기 연구소: 전자기유도 시뮬레이션 | `electromagnetic-induction/` |
+| 지구과학 | 별의 핵: 수소에서 철까지 원소를 융합하는 원형 중력 게임 | `stellar-nucleosynthesis/` |
 
 ## 구조
 
