@@ -881,7 +881,7 @@ $('#btnRankGo').onclick=()=>openIntro(rankMode);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function drawRank(list,mode,shared){
   const ul=$('#rList');
-  $('#rTitle').textContent=shared?'전체 TOP 20':'이 기기 TOP 20';
+  $('#rTitle').textContent=shared?'전체 TOP 10':'이 기기 TOP 10';
   $('#rNote').innerHTML=shared?'모든 학생의 기록이 함께 모이는 전체 랭킹이에요.':'전체 랭킹에 연결하지 못해 <b>이 기기</b>의 기록을 보여 주고 있어요. 인터넷 연결을 확인해 주세요.';
   if(!list.length){ul.innerHTML='<div class="empty">아직 기록이 없어요.<br>첫 번째 도전자가 되어 보세요.</div>';return;}
   let marked=false;
@@ -897,12 +897,12 @@ async function renderRank(){
   $('#rTitle').textContent='불러오는 중...'; $('#rList').innerHTML='<div class="empty">랭킹을 불러오는 중이에요.</div>';
   const order=mode==='speed'?'score.desc,created_at.asc':'score.desc,avg_time.asc,created_at.asc';
   try{
-    const rows=await sb(`${SB_TABLE}?select=name,score,correct,avg_time,created_at&mode=eq.${mode}&order=${order}&limit=20`);
+    const rows=await sb(`${SB_TABLE}?select=name,score,correct,avg_time,created_at&mode=eq.${mode}&order=${order}&limit=10`);
     if(req!==rankReq) return;
     drawRank(rows.map(r=>({nick:r.name,score:r.score,correct:r.correct,avg:(+r.avg_time).toFixed(2),date:new Date(r.created_at).toLocaleDateString('ko-KR')})),mode,true);
   }catch(e){
     if(req!==rankReq) return;
-    drawRank(loadLocal(mode).slice().sort(sortRank(mode)).slice(0,20),mode,false);
+    drawRank(loadLocal(mode).slice().sort(sortRank(mode)).slice(0,10),mode,false);
   }
 }
 window.__test={GEN,drawMachine,S};
