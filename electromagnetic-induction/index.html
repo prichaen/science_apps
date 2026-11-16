@@ -849,8 +849,8 @@ function finish(){
 $('#btnStart').onclick=startGame; $('#btnRetry').onclick=startGame;
 
 /* ======================= RANKING (Supabase shared + local fallback) ======================= */
-const SB_URL='https://ytsykhmurfmxntqshhtw.supabase.co';
-const SB_KEY='sb_publishable_Z_RC0FWBQBJOfLwvnjOoeg_QmlqXIAm';   // 공개용 키 (브라우저에 보여도 되는 키)
+const SB_URL='https://azsmgtmdmhavvvinjgbk.supabase.co';
+const SB_KEY='sb_publishable_otUg0BmbBBnSVfZx7I6d9A_flmmkOSO';   // 공개용 키 (브라우저에 보여도 되는 키)
 const SB_TABLE='em_scores';
 async function sb(path,opts={}){
   const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),6000);
