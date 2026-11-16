@@ -22,6 +22,9 @@ science_apps/
    └─ supabase-setup.sql       랭킹용 Supabase 표 설정 (SQL Editor에서 한 번 실행)
 ```
 
+## 랭킹 (Supabase)
+전자기 유도 앱의 랭킹은 Supabase `em_scores` 표에 저장됩니다. 연결이 안 되면 기기 브라우저에 저장된 기록을 보여 줍니다.
+
 ## 새 앱 추가하기
 1. 앱 이름으로 폴더를 만들고 그 안에 `index.html`을 넣습니다.
 2. 루트 `index.html`의 `APPS` 목록에 한 줄을 추가합니다.
