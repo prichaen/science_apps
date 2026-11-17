@@ -214,7 +214,7 @@ input.nick{width:100%;padding:14px;border-radius:14px;border:1px solid var(--lin
   <div class="card">
     <h3>게임 규칙</h3>
     <ul class="rules" id="giRules"></ul>
-    <p style="color:var(--mut);font-size:13px">출제 범위: 앙페르 법칙(솔레노이드), 플레밍 왼손 법칙(전동기), 플레밍 오른손 법칙(발전기)</p>
+    <p style="color:var(--mut);font-size:13px">출제 범위: 렌츠 법칙과 앙페르 법칙(솔레노이드), 플레밍 왼손 법칙(전동기), 플레밍 오른손 법칙(발전기)</p>
   </div>
   <button class="bigbtn" id="btnStart">게임 시작</button>
 </section>
@@ -710,17 +710,38 @@ const CW={sym:'시계',lb:'정류자 쪽에서 볼 때',t:1}, CCW={sym:'반시�
 const QV={yaw:.5,pitch:.38};
 // question scenes: coil fixed with AB on the left (th = π)
 const QTH=Math.PI;
+/* Lenz scene: side +1 = magnet on the right of the coil; p = pole facing the coil (+1 N);
+   a = +1 approaching / -1 receding. The coil end facing the magnet becomes p*a (repel when approaching, attract when receding). */
+function lenzScene(){ const side=pm(), p=pm(), a=pm(), facing=p*a;
+  const nLeft = side>0 ? facing<0 : facing>0;     // which end of the coil is N
+  return {side,p,a,nLeft,c:nLeft?1:-1};           // front current up <=> N on the left (right-hand grip)
+}
+function lenzWhy(sc){ return `자석의 ${sc.p>0?'N극':'S극'}이 ${sc.a>0?'다가오면':'멀어지면'} 코일의 ${sc.side>0?'오른쪽':'왼쪽'} 끝은 ${sc.p*sc.a>0?'N극':'S극'}이 돼요(${sc.a>0?'밀어내려고':'붙잡으려고'}).`; }
+function drawLenz(ctx,W,H,sc,o){
+  const cy=H*.5, ry=H*.24, coil=sc.side>0?[W*.16,W*.48]:[W*.52,W*.84];
+  drawSolenoid(ctx,{x0:coil[0],x1:coil[1],cy,ry,turns:4,cur:sc.c,phase:0,arrows:o.arrows!==false,arrowQ:o.arrows==='q',poleLabels:o.poles,nLeft:sc.nLeft,showField:false,leadLen:8});
+  const mw=W*.3, mh=H*.16, mx=sc.side>0?W*.62:W*.08, my=cy-mh/2;
+  barMagnet(ctx,mx,my,mw,mh, sc.side>0?(sc.p>0?'N':'S'):(sc.p>0?'S':'N'));
+  const dx=sc.a*(sc.side>0?-1:1), ax=mx+mw/2, ay=my-24;
+  if(o.motion==='q') qmark(ctx,ax,ay-4,28,C.green);
+  else { arrow(ctx,ax-dx*26,ay,ax+dx*26,ay,C.green,5,13); label(ctx,'v',ax+dx*40,ay,C.green,15); }
+}
 const GEN = {
-  solN(){ const c=pm(), nLeft=c>0;
-    return {tag:'솔레노이드 · 앙페르 법칙',text:'코일 앞쪽 도선에 화살표 방향으로 전류가 흐를 때, N극은 어느 쪽일까?',
-      draw:(ctx,W,H)=>drawSolenoid(ctx,{x0:W*.2,x1:W*.8,cy:H*.48,ry:H*.25,turns:5,cur:c,phase:0,arrows:true,poleLabels:'q',nLeft:null}),
-      choices:[{sym:'왼쪽',lb:'왼쪽이 N극',t:1},{sym:'오른쪽',lb:'오른쪽이 N극',t:1}], ans:nLeft?0:1,
-      exp:`오른손 네 손가락을 전류 방향(앞쪽 ${c>0?'↑':'↓'})으로 감아쥐면 엄지가 ${nLeft?'왼쪽':'오른쪽'}을 가리켜요.`}; },
-  solI(){ const nLeft=Math.random()<.5, c=nLeft?1:-1;
-    return {tag:'솔레노이드 · 앙페르 법칙',text:'코일의 극이 그림과 같을 때, 코일 앞쪽 도선의 전류 방향은?',
-      draw:(ctx,W,H)=>drawSolenoid(ctx,{x0:W*.2,x1:W*.8,cy:H*.48,ry:H*.25,turns:5,cur:c,phase:0,arrows:true,arrowQ:true,poleLabels:'show',nLeft,showField:false}),
-      choices:[UP,DOWN], ans:c>0?0:1,
-      exp:`엄지를 N극(${nLeft?'왼쪽':'오른쪽'})으로 향하면 앞쪽 도선에서 네 손가락은 ${c>0?'위':'아래'}를 향해요.`}; },
+  lenzI(){ const sc=lenzScene();
+    return {tag:'솔레노이드 · 렌츠 법칙',text:'자석이 화살표 방향으로 움직일 때, 코일 앞쪽 도선에 흐르는 유도 전류의 방향은?',
+      draw:(ctx,W,H)=>drawLenz(ctx,W,H,sc,{arrows:'q',poles:'none',motion:'show'}),
+      choices:[{...UP,lb:'위쪽 ↑'},{...DOWN,lb:'아래쪽 ↓'}], ans:sc.c>0?0:1,
+      exp:lenzWhy(sc)+` 엄지를 N극(${sc.nLeft?'왼쪽':'오른쪽'})으로 하고 감아쥐면 앞쪽 도선 전류는 ${sc.c>0?'↑':'↓'}.`}; },
+  lenzPole(){ const sc=lenzScene();
+    return {tag:'솔레노이드 · 렌츠 법칙',text:'자석이 화살표 방향으로 움직일 때, 코일의 어느 쪽 끝이 N극이 될까?',
+      draw:(ctx,W,H)=>drawLenz(ctx,W,H,sc,{arrows:false,poles:'q',motion:'show'}),
+      choices:[{sym:'왼쪽',lb:'왼쪽 끝이 N극',t:1},{sym:'오른쪽',lb:'오른쪽 끝이 N극',t:1}], ans:sc.nLeft?0:1,
+      exp:lenzWhy(sc)+` 그래서 N극은 코일의 ${sc.nLeft?'왼쪽':'오른쪽'} 끝.`}; },
+  lenzMove(){ const sc=lenzScene(); const same=sc.a>0;
+    return {tag:'솔레노이드 · 렌츠 법칙',text:'코일 앞쪽 도선에 화살표 방향의 유도 전류가 흘렀다면, 자석은 어떻게 움직였을까?',
+      draw:(ctx,W,H)=>drawLenz(ctx,W,H,sc,{arrows:'show',poles:'none',motion:'q'}),
+      choices:[{sym:'가까이',lb:'코일 쪽으로 다가감',t:1},{sym:'멀리',lb:'코일에서 멀어짐',t:1}], ans:sc.a>0?0:1,
+      exp:`앞쪽 전류가 ${sc.c>0?'↑':'↓'}이면 코일의 N극은 ${sc.nLeft?'왼쪽':'오른쪽'}, 자석 쪽 끝은 ${sc.p*sc.a>0?'N극':'S극'}이에요. 자석의 ${sc.p>0?'N극':'S극'}과 ${same?'같은 극으로 밀어내고 있으니 자석은 다가오는 중':'다른 극으로 끌어당기고 있으니 자석은 멀어지는 중'}.`}; },
   motF(){ const Bx=pm(), sA=pm(), F=sA*Bx;
     return {tag:'전동기 · 플레밍 왼손 법칙',text:'코일의 AB 부분에 화살표 방향으로 전류가 흐를 때, AB가 받는 힘의 방향은?',
       draw:(ctx,W,H)=>drawMachine(ctx,W,H,QV,{kind:'motor',th:QTH,Bx,sA,inten:1,sides:'A',cur:'A',force:'qA',I:0}),
