@@ -78,6 +78,23 @@ aside{display:flex;flex-direction:column;gap:16px;min-width:0}
 .title-actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
 .title-actions button{font-size:17px;padding:14px 34px;min-width:150px}
 .sound-btn{align-self:center}
+/* 핵 단계 퀴즈 */
+.quiz .eyebrow{letter-spacing:.12em;text-transform:none}
+.quiz{word-break:keep-all}
+.quiz h3{margin:0;font-size:19px;line-height:1.5;font-weight:700;text-wrap:balance}
+.reward{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mute)}
+.reward .el{width:34px;height:34px;font-size:13px;flex:none}
+.choices{display:grid;gap:10px}
+.choices button{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid rgba(236,232,246,.28);border-radius:14px;
+  padding:14px 16px;text-align:left;font:600 15px/1.5 var(--f-body);display:flex;gap:12px;align-items:flex-start}
+.choices button .key{font-family:var(--f-data);color:var(--flare);flex:none}
+.choices button:not(:disabled):hover{border-color:var(--flare);background:rgba(255,138,61,.1)}
+.choices button.right{border-color:#7ee081;background:rgba(126,224,129,.16)}
+.choices button.wrong{border-color:var(--danger);background:rgba(255,79,109,.14)}
+.choices button:disabled{opacity:1;cursor:default}
+.verdict{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1}
+.verdict.ok{color:#7ee081} .verdict.no{color:var(--danger)}
+.explain{font-size:14px;line-height:1.6;color:#cfc8e6;margin:0}
 .title-best{font-family:var(--f-data);font-size:13px;color:var(--mute)}
 
 /* 시트(종료, 랭킹) */
@@ -174,6 +191,7 @@ ol.rank li.empty{display:block;background:none}
         <li>판 위에서 <b>포인터를 움직여</b> 가장자리 투하 위치를 고르고 <b>클릭/탭</b>으로 떨어뜨립니다.</li>
         <li>키보드: <b>← →</b> 조준, <b>스페이스</b> 투하.</li>
         <li>점선 경계 밖에 물질이 2초 머물면 게임 종료.</li>
+        <li><b>아르곤</b>부터 새 원소에 도달할 때마다 퀴즈! 맞히면 다음 입자가 큰 원소로 바뀝니다.</li>
       </ul>
       <div class="row">
         <button class="ghost small" id="restart" type="button">처음부터</button>
@@ -198,6 +216,20 @@ ol.rank li.empty{display:block;background:none}
       <button class="ghost" id="restart2" type="button">다시 하기</button>
       <button class="ghost" id="overTitleBtn" type="button">메인 화면</button>
     </div>
+  </div>
+</div>
+
+<div class="sheet" id="quiz" hidden role="dialog" aria-modal="true" aria-labelledby="quizQ">
+  <div class="panel quiz">
+    <span class="eyebrow" id="quizStage">핵 단계 도전</span>
+    <div class="reward" id="quizReward"></div>
+    <h3 id="quizQ"></h3>
+    <div class="choices" id="quizChoices"></div>
+    <div id="quizResult" hidden>
+      <div class="verdict" id="quizVerdict"></div>
+      <p class="explain" id="quizExplain"></p>
+    </div>
+    <button id="quizGo" type="button" hidden>계속하기</button>
   </div>
 </div>
 
@@ -394,6 +426,39 @@ function spawnSparks(x,y,color,r,lv,big){
 const wobNow=b=>b.wob*Math.exp(-b.wobT*6);
 function wobble(b,amp,ang){ if(wobNow(b)<amp*.6){ b.wob=amp; b.wobT=0; b.wobA=ang; } }
 
+// ---------- 핵 단계 퀴즈 ----------
+// 처음 도달한 원소 단계 → 정답일 때 다음에 떨어뜨릴 입자
+const QUIZ_REWARD={8:4,9:5,10:6,11:7};   // Ar→Ne, Ca→Mg, Ti→Si, Cr→S
+const QUIZ=[
+ {q:'수소 핵융합에서 막대한 에너지가 나오는 까닭은?',a:'반응 뒤 질량이 줄어들고, 줄어든 질량이 에너지로 바뀌기 때문',b:'반응 뒤 질량이 늘어나고, 늘어난 질량이 빛으로 바뀌기 때문',e:'반응 전보다 반응 후의 질량이 작아지는데, 이를 질량 결손이라고 해요. 사라진 질량만큼 E = mc²에 따라 에너지가 방출됩니다.'},
+ {q:'수소 원자핵 4개가 헬륨 원자핵 1개로 바뀔 때, 질량은 어떻게 될까?',a:'반응 전보다 줄어든다',b:'반응 전보다 늘어난다',e:'헬륨 원자핵 1개의 질량은 수소 원자핵 4개의 질량을 합한 것보다 약 0.7% 작아요. 이 차이가 에너지로 방출됩니다.'},
+ {q:'핵융합에서 줄어든 질량과 방출되는 에너지의 관계를 나타낸 식은?',a:'E = mc²',b:'E = mgh',e:'아인슈타인의 질량-에너지 등가 원리예요. 빛의 속도(c)를 제곱한 값이 매우 커서, 아주 작은 질량도 막대한 에너지가 됩니다.'},
+ {q:'태양이 빛과 열을 내는 에너지원은?',a:'중심부의 수소 핵융합',b:'석탄처럼 물질이 타는 화학 반응(연소)',e:'태양은 주계열성이에요. 중심부에서 수소 원자핵이 융합해 헬륨이 되면서 나오는 에너지로 빛납니다.'},
+ {q:'별의 중심에서 수소 핵융합이 일어나기 위한 조건은?',a:'약 1000만 K 이상의 매우 높은 온도',b:'0 K에 가까운 매우 낮은 온도',e:'원자핵은 모두 (+)전하를 띠어 서로 밀어내요. 온도가 매우 높아야 원자핵이 빠르게 움직여 이 반발을 이기고 융합할 수 있습니다.'},
+ {q:'새로운 별이 탄생하는 곳은?',a:'성간 물질(가스와 먼지)이 모인 성운',b:'블랙홀의 내부',e:'성운에서 밀도가 높은 부분이 중력으로 수축하면서 원시별이 만들어지고, 중심 온도가 충분히 오르면 수소 핵융합을 시작해 별이 됩니다.'},
+ {q:'아직 핵융합을 시작하지 않은 원시별이 뜨거워지는 까닭은?',a:'중력에 의해 수축하면서 온도가 올라가기 때문',b:'중심에서 철 핵융합이 일어나기 때문',e:'원시별은 중력 수축으로 에너지를 얻어 온도가 올라가요. 중심 온도가 약 1000만 K에 이르면 수소 핵융합이 시작됩니다.'},
+ {q:'주계열성이 오랫동안 크기를 일정하게 유지하는 까닭은?',a:'안으로 당기는 중력과 밖으로 미는 내부 압력이 평형을 이루기 때문',b:'별에는 중력이 작용하지 않기 때문',e:'핵융합으로 뜨거워진 기체의 압력이 바깥으로 밀고, 중력은 안으로 당겨요. 두 힘이 균형을 이루는 동안 별은 안정하게 빛납니다.'},
+ {q:'태양과 질량이 비슷한 별이 마지막에 남기는 천체는?',a:'백색왜성',b:'블랙홀',e:'태양 정도의 별은 적색거성이 된 뒤 바깥층을 행성상 성운으로 날려 보내고, 남은 중심핵이 백색왜성이 됩니다.'},
+ {q:'적색거성이 된 태양 질량 정도의 별이 바깥층을 우주로 방출하며 만드는 것은?',a:'행성상 성운',b:'초신성 폭발',e:'바깥층 가스가 천천히 퍼져 나가 빛나는 껍질이 행성상 성운이에요. 초신성 폭발은 질량이 훨씬 큰 별에서 일어납니다.'},
+ {q:'백색왜성에 대한 설명으로 옳은 것은?',a:'핵융합이 멈춘 뒤 남은 중심핵이 서서히 식어 가는 천체',b:'수소 핵융합이 가장 활발하게 일어나는 천체',e:'백색왜성은 더 이상 핵융합을 하지 않아요. 지구 정도의 크기에 매우 밀도가 높고, 남은 열로 빛나며 천천히 식어 갑니다.'},
+ {q:'질량이 매우 큰 별의 중심에서 핵융합으로 마지막에 만들어지는 원소는?',a:'철',b:'탄소',e:'핵융합은 수소 → 헬륨 → 탄소 → 산소 → … → 규소 → 철 순으로 진행되고, 철에서 멈춥니다. 그래서 별의 중심은 양파처럼 여러 겹이 돼요.'},
+ {q:'철까지 만들어진 별의 중심에서 핵융합이 더 진행되지 않는 까닭은?',a:'철은 핵융합을 해도 에너지를 방출하지 않기 때문',b:'철은 가장 가벼운 원소이기 때문',e:'철은 원자핵이 가장 안정한 원소예요. 철이 융합하려면 오히려 에너지가 필요해서, 중심핵은 버티지 못하고 붕괴합니다.'},
+ {q:'금이나 우라늄처럼 철보다 무거운 원소는 주로 어디에서 만들어질까?',a:'초신성 폭발',b:'태양 같은 별 중심의 수소 핵융합',e:'철보다 무거운 원소는 초신성 폭발처럼 엄청난 에너지가 나오는 순간에 만들어져 우주로 퍼집니다.'},
+ {q:'초신성 폭발 뒤에 남을 수 있는 천체는?',a:'중성자별이나 블랙홀',b:'원시별',e:'질량이 큰 별은 중심핵이 붕괴하며 초신성으로 폭발하고, 남은 중심핵은 질량에 따라 중성자별이나 블랙홀이 됩니다.'},
+ {q:'별의 질량이 클수록 별의 수명은?',a:'짧다',b:'길다',e:'질량이 큰 별은 중심 온도가 높아 연료를 매우 빠르게 써 버려요. 그래서 질량이 클수록 수명이 짧습니다.'},
+ {q:'적색거성 단계에 이른 별의 중심핵에서 일어나는 일은?',a:'헬륨 핵융합으로 탄소가 만들어진다',b:'수소가 새로 만들어져 쌓인다',e:'중심의 수소를 다 쓰면 중심핵이 수축해 더 뜨거워지고, 헬륨 원자핵 3개가 융합해 탄소가 만들어집니다. 이때 바깥층은 크게 부풀어요.'},
+ {q:'우리 몸을 이루는 탄소와 산소는 어디에서 왔을까?',a:'과거 별의 내부에서 핵융합으로 만들어져 우주로 퍼진 것',b:'빅뱅 직후에 바로 만들어진 것',e:'빅뱅 때는 주로 수소와 헬륨만 만들어졌어요. 탄소·산소 같은 원소는 별의 내부에서 만들어져 별이 죽을 때 우주로 퍼졌습니다.'},
+ {q:'초신성 폭발로 우주에 퍼진 물질은 그 뒤 어떻게 될까?',a:'다시 성간 물질이 되어 새로운 별과 행성의 재료가 된다',b:'모두 블랙홀로 빨려 들어가 사라진다',e:'퍼져 나간 물질은 성간 물질과 섞여 다음 세대 별과 행성의 재료가 돼요. 태양계도 이런 물질로 만들어졌습니다.'},
+ {q:'우주 초기(빅뱅 직후)에 주로 만들어진 원소는?',a:'수소와 헬륨',b:'철과 금',e:'빅뱅 직후에는 가장 가벼운 수소와 헬륨이 만들어졌어요. 무거운 원소는 그 뒤 별의 내부와 초신성 폭발에서 만들어졌습니다.'},
+ {q:'수소 핵융합을 마친 별의 중심부에 쌓이는 원소는?',a:'헬륨',b:'우라늄',e:'수소 원자핵 4개가 융합해 헬륨 원자핵 1개가 되므로, 수소를 다 쓴 중심부에는 헬륨이 쌓입니다.'},
+];
+let quizBag=[], quizOpen=false, quizPending=[], quizAsked=new Set();
+const iga=w=>{const c=w.charCodeAt(w.length-1)-0xAC00; return w+(c>=0&&c<11172&&c%28?'이':'가');};
+function nextQuestion(){
+  if(!quizBag.length){ quizBag=QUIZ.map((_,i)=>i); for(let i=quizBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[quizBag[i],quizBag[j]]=[quizBag[j],quizBag[i]];} }
+  return QUIZ[quizBag.pop()];
+}
+
 // ---------- state ----------
 let balls, fx, score, maxLv, cur, nxt, aim, cool, dangerT, over, flash, shake, novae, seen;
 let playing=false, saved=false, sparks=[];
@@ -402,11 +467,12 @@ const pick=()=>{const r=Math.random(); return r<.42?0:r<.72?1:r<.9?2:3;};
 function reset(){
   balls=[]; fx=[]; sparks=[]; score=0; maxLv=0; cur=pick(); nxt=pick(); aim=-Math.PI/2; cool=0;
   dangerT=0; over=false; flash=0; shake=0; novae=0; seen=new Set([0]); saved=false;
+  quizOpen=false; quizPending=[]; quizAsked=new Set(); $('quiz').hidden=true;
   $('over').hidden=true; ui();
 }
 function addBall(lv,x,y,vx=0,vy=0,r){balls.push({lv,x,y,px:x-vx,py:y-vy,r:r??RAD[lv],tr:RAD[lv],age:0,dead:false,wob:0,wobT:9,wobA:0});}
 function drop(){
-  if(!playing||over||cool>0) return;
+  if(!playing||over||quizOpen||cool>0) return;
   const r=RAD[cur], d=R-r-1;
   addBall(cur,C+Math.cos(aim)*d,C+Math.sin(aim)*d); sfx.drop(cur);
   cur=nxt; nxt=pick(); cool=0.45; ui();
@@ -467,6 +533,7 @@ function fuse(a,b){
   spawnSparks(x,y,EL[lv].c,RAD[lv],lv); sfx.fuse(lv);
   score+=PTS[lv]; seen.add(lv);
   if(lv>maxLv) maxLv=lv;
+  if(QUIZ_REWARD[lv]!=null&&!quizAsked.has(lv)){ quizAsked.add(lv); quizPending.push(lv); }
   fx.push({x,y,t:0,txt:reaction(lv),c:EL[lv].c,ring:RAD[lv]});
   ui();
 }
@@ -686,6 +753,52 @@ $('entry').addEventListener('submit',async ev=>{
   $('over').hidden=true; openRank(true);
 });
 
+// ---------- 퀴즈 화면 ----------
+function openQuiz(lv){
+  quizOpen=true;
+  const item=nextQuestion(), rw=QUIZ_REWARD[lv], E=EL[rw];
+  const next=Object.keys(QUIZ_REWARD).map(Number).find(k=>k>lv);
+  $('quizStage').textContent=`핵 단계 도전 · ${EL[lv].n}(${EL[lv].s}) 도달`;
+  $('quizReward').innerHTML='';
+  const chip=document.createElement('span'); chip.className='el'; chip.style.background=E.c; chip.textContent=E.s;
+  const t=document.createElement('span'); t.textContent=`맞히면 다음에 떨어뜨릴 입자가 ${iga(E.n)} 됩니다.`;
+  $('quizReward').append(chip,t);
+  $('quizQ').textContent=item.q;
+  const opts=Math.random()<.5?[[item.a,true],[item.b,false]]:[[item.b,false],[item.a,true]];
+  const box=$('quizChoices'); box.textContent='';
+  opts.forEach(([txt,ok],i)=>{
+    const b=document.createElement('button'); b.type='button';
+    const k=document.createElement('span'); k.className='key'; k.textContent=i?'B':'A';
+    const v=document.createElement('span'); v.textContent=txt;
+    b.append(k,v); b.dataset.ok=ok?'1':'';
+    b.onclick=()=>answer(ok,b,rw,next,item.e);
+    box.append(b);
+  });
+  $('quizResult').hidden=true; $('quizGo').hidden=true;
+  $('quiz').hidden=false; box.firstChild.focus();
+}
+function answer(ok,btn,rw,next,explain){
+  const btns=[...$('quizChoices').children];
+  btns.forEach(b=>{ b.disabled=true; if(b.dataset.ok) b.classList.add('right'); });
+  if(!ok) btn.classList.add('wrong');
+  const v=$('quizVerdict');
+  if(ok){
+    v.className='verdict ok'; v.textContent=`정답! 다음 입자: ${EL[rw].n}(${EL[rw].s})`;
+    cur=rw; score+=PTS[rw]; ui(); sfx.fuse(rw+2);
+  } else {
+    v.className='verdict no';
+    v.textContent=next!=null?`아쉬워요. ${EL[next].n} 단계에서 다시 기회가 있어요.`:'아쉬워요. 다음 판에 다시 도전해 보세요.';
+    sfx.bounce(6,.08);
+  }
+  $('quizExplain').textContent=explain;
+  $('quizResult').hidden=false; $('quizGo').hidden=false; $('quizGo').focus();
+}
+$('quizGo').onclick=()=>{
+  $('quiz').hidden=true; quizOpen=false; cool=0.3;
+  if(quizPending.length) openQuiz(quizPending.shift());
+  else cv.focus({preventScroll:true});
+};
+
 // ---------- input ----------
 function setAim(e){const r=cv.getBoundingClientRect();
   const x=(e.clientX-r.left)/r.width*W, y=(e.clientY-r.top)/r.height*W; aim=Math.atan2(y-C,x-C);}
@@ -717,7 +830,7 @@ let last=performance.now(), acc=0;
 function frame(now){
   let dt=Math.min(.1,(now-last)/1000); last=now; acc+=dt;
   while(acc>=DT){
-    if(playing&&!over){
+    if(playing&&!over&&!quizOpen){
       step(DT); cool=Math.max(0,cool-DT);
       const out=balls.some(b=>b.age>1.2 && Math.hypot(b.x-b.px,b.y-b.py)<0.6 && Math.hypot(b.x-C,b.y-C)+b.r>DANGER);
       dangerT=out?dangerT+DT:Math.max(0,dangerT-DT*2);
@@ -730,6 +843,7 @@ function frame(now){
     flash=Math.max(0,flash-DT*1.2); shake=Math.max(0,shake-DT*1.5);
     acc-=DT;
   }
+  if(playing&&!over&&!quizOpen&&quizPending.length) openQuiz(quizPending.shift());
   if(document.body.classList.contains('title-mode')) drawOrbit(now); else render();
   requestAnimationFrame(frame);
 }
