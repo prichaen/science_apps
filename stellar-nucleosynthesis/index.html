@@ -59,6 +59,8 @@ aside{display:flex;flex-direction:column;gap:16px;min-width:0}
   font-family:var(--f-data);font-weight:600;font-size:13px;border:1px dashed var(--line);color:var(--mute);line-height:1}
 .chip sup{font-size:8px;font-weight:400;margin-bottom:1px}
 .chip.on{border:0;color:#14111f}
+.chip.spawn:not(.on){border-style:solid;border-color:rgba(236,232,246,.45)}
+#spawnRange{color:var(--ink);font-weight:600}
 .chip.top{box-shadow:0 0 0 2px var(--void),0 0 0 3px var(--ink)}
 .help{font-size:13px;color:var(--mute);line-height:1.6;margin:0;padding-left:18px}
 .help b{color:var(--ink);font-weight:600}
@@ -183,6 +185,7 @@ ol.rank li.empty{display:block;background:none}
     <div class="card">
       <div class="lbl">핵합성 사다리</div>
       <div class="ladder" id="ladder"></div>
+      <div class="phase-d" id="spawnRange">나오는 입자: 수소(H) ~ 산소(O)</div>
       <div class="phase-d">철 두 개가 만나면 초신성. 판이 비워지고 큰 보너스를 받습니다.</div>
     </div>
     <div class="card wide">
@@ -191,7 +194,7 @@ ol.rank li.empty{display:block;background:none}
         <li>판 위에서 <b>포인터를 움직여</b> 가장자리 투하 위치를 고르고 <b>클릭/탭</b>으로 떨어뜨립니다.</li>
         <li>키보드: <b>← →</b> 조준, <b>스페이스</b> 투하.</li>
         <li>점선 경계 밖에 물질이 2초 머물면 게임 종료.</li>
-        <li><b>아르곤</b>부터 새 원소에 도달할 때마다 퀴즈! 맞히면 다음 입자가 큰 원소로 바뀝니다.</li>
+        <li><b>아르곤</b>부터 새 원소에 도달할 때마다 퀴즈! 맞힐 때마다 나오는 입자가 한 단계씩 커집니다(산소 → 네온 → 마그네슘 …).</li>
       </ul>
       <div class="row">
         <button class="ghost small" id="restart" type="button">처음부터</button>
@@ -428,7 +431,7 @@ function wobble(b,amp,ang){ if(wobNow(b)<amp*.6){ b.wob=amp; b.wobT=0; b.wobA=an
 
 // ---------- 핵 단계 퀴즈 ----------
 // 처음 도달한 원소 단계 → 정답일 때 다음에 떨어뜨릴 입자
-const QUIZ_REWARD={8:4,9:5,10:6,11:7};   // Ar→Ne, Ca→Mg, Ti→Si, Cr→S
+const QUIZ_REWARD={8:1,9:1,10:1,11:1};   // 퀴즈가 나오는 단계(Ar, Ca, Ti, Cr). 맞히면 나오는 입자 범위가 한 단계 넓어짐
 const QUIZ=[
  {q:'수소 핵융합에서 막대한 에너지가 나오는 까닭은?',a:'반응 뒤 질량이 줄어들고, 줄어든 질량이 에너지로 바뀌기 때문',b:'반응 뒤 질량이 늘어나고, 늘어난 질량이 빛으로 바뀌기 때문',e:'반응 전보다 반응 후의 질량이 작아지는데, 이를 질량 결손이라고 해요. 사라진 질량만큼 E = mc²에 따라 에너지가 방출됩니다.'},
  {q:'수소 원자핵 4개가 헬륨 원자핵 1개로 바뀔 때, 질량은 어떻게 될까?',a:'반응 전보다 줄어든다',b:'반응 전보다 늘어난다',e:'헬륨 원자핵 1개의 질량은 수소 원자핵 4개의 질량을 합한 것보다 약 0.7% 작아요. 이 차이가 에너지로 방출됩니다.'},
@@ -453,6 +456,7 @@ const QUIZ=[
  {q:'수소 핵융합을 마친 별의 중심부에 쌓이는 원소는?',a:'헬륨',b:'우라늄',e:'수소 원자핵 4개가 융합해 헬륨 원자핵 1개가 되므로, 수소를 다 쓴 중심부에는 헬륨이 쌓입니다.'},
 ];
 let quizBag=[], quizOpen=false, quizPending=[], quizAsked=new Set();
+const E_NAME=i=>`${EL[i].n}(${EL[i].s})`;
 const iga=w=>{const c=w.charCodeAt(w.length-1)-0xAC00; return w+(c>=0&&c<11172&&c%28?'이':'가');};
 function nextQuestion(){
   if(!quizBag.length){ quizBag=QUIZ.map((_,i)=>i); for(let i=quizBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[quizBag[i],quizBag[j]]=[quizBag[j],quizBag[i]];} }
@@ -463,9 +467,12 @@ function nextQuestion(){
 let balls, fx, score, maxLv, cur, nxt, aim, cool, dangerT, over, flash, shake, novae, seen;
 let playing=false, saved=false, sparks=[];
 let best=+store.get(APP_ID+':best',0)||0;
-const pick=()=>{const r=Math.random(); return r<.42?0:r<.72?1:r<.9?2:3;};
+const BASE_MAX=3;          // 처음에는 산소(O)까지 나옴
+let spawnMax=BASE_MAX;     // 퀴즈를 맞힐 때마다 1씩 늘어남
+const pick=()=>{ let tot=0; for(let i=0;i<=spawnMax;i++) tot+=Math.pow(.7,i);
+  let r=Math.random()*tot; for(let i=0;i<=spawnMax;i++){ r-=Math.pow(.7,i); if(r<0) return i; } return spawnMax; };
 function reset(){
-  balls=[]; fx=[]; sparks=[]; score=0; maxLv=0; cur=pick(); nxt=pick(); aim=-Math.PI/2; cool=0;
+  spawnMax=BASE_MAX; balls=[]; fx=[]; sparks=[]; score=0; maxLv=0; cur=pick(); nxt=pick(); aim=-Math.PI/2; cool=0;
   dangerT=0; over=false; flash=0; shake=0; novae=0; seen=new Set([0]); saved=false;
   quizOpen=false; quizPending=[]; quizAsked=new Set(); $('quiz').hidden=true;
   $('over').hidden=true; ui();
@@ -667,7 +674,9 @@ function ui(){
   $('phaseName').textContent=ph.name+(novae?` · 초신성 ${novae}회`:'');
   $('phaseT').textContent='T ≈ '+ph.t;
   $('phaseD').textContent=ph.d;
+  $('spawnRange').textContent=`나오는 입자: 수소(H) ~ ${E_NAME(spawnMax)}`;
   lad.querySelectorAll('.chip').forEach(ch=>{const i=+ch.dataset.i, on=seen.has(i);
+    ch.classList.toggle('spawn',i<=spawnMax);
     ch.classList.toggle('on',on); ch.classList.toggle('top',i===maxLv);
     ch.style.background=on?EL[i].c:''; });
   drawNext();
@@ -756,12 +765,12 @@ $('entry').addEventListener('submit',async ev=>{
 // ---------- 퀴즈 화면 ----------
 function openQuiz(lv){
   quizOpen=true;
-  const item=nextQuestion(), rw=QUIZ_REWARD[lv], E=EL[rw];
+  const item=nextQuestion(), rw=Math.min(FE-1,spawnMax+1), E=EL[rw];
   const next=Object.keys(QUIZ_REWARD).map(Number).find(k=>k>lv);
   $('quizStage').textContent=`핵 단계 도전 · ${EL[lv].n}(${EL[lv].s}) 도달`;
   $('quizReward').innerHTML='';
   const chip=document.createElement('span'); chip.className='el'; chip.style.background=E.c; chip.textContent=E.s;
-  const t=document.createElement('span'); t.textContent=`맞히면 다음에 떨어뜨릴 입자가 ${iga(E.n)} 됩니다.`;
+  const t=document.createElement('span'); t.textContent=`맞히면 앞으로 수소부터 ${E.n}(${E.s})까지 무작위로 나옵니다.`;
   $('quizReward').append(chip,t);
   $('quizQ').textContent=item.q;
   const opts=Math.random()<.5?[[item.a,true],[item.b,false]]:[[item.b,false],[item.a,true]];
@@ -783,8 +792,9 @@ function answer(ok,btn,rw,next,explain){
   if(!ok) btn.classList.add('wrong');
   const v=$('quizVerdict');
   if(ok){
-    v.className='verdict ok'; v.textContent=`정답! 다음 입자: ${EL[rw].n}(${EL[rw].s})`;
-    cur=rw; score+=PTS[rw]; ui(); sfx.fuse(rw+2);
+    v.className='verdict ok';
+    v.textContent=`정답! 이제 ${E_NAME(rw)}까지 나와요`;
+    spawnMax=Math.max(spawnMax,rw); score+=PTS[rw]; ui(); sfx.fuse(rw+2);
   } else {
     v.className='verdict no';
     v.textContent=next!=null?`아쉬워요. ${EL[next].n} 단계에서 다시 기회가 있어요.`:'아쉬워요. 다음 판에 다시 도전해 보세요.';
